@@ -401,6 +401,9 @@ public class CircleView2 extends FrameLayout implements View.OnTouchListener {
 	     final int historySize = event.getHistorySize();
 	     final int pointerCount = event.getPointerCount();
 	    
+	     /*
+	     //use handler instead of AsyncTask
+	     //so... deleted
 	    switch( event.getActionMasked()){
 	    case MotionEvent.ACTION_MOVE :
 	    	this.mMotionMovingCounter ++;
@@ -443,6 +446,7 @@ public class CircleView2 extends FrameLayout implements View.OnTouchListener {
 	    	}
 	    	break;
 	    }
+	    //*/
 	   
 	    /*
 	     Log.i(MOTION_EVENT_TAG,"mTestCounter:" + mTestCounter + "historySize:" + historySize + "pointerCount:" + pointerCount );
