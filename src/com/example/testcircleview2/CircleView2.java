@@ -1,12 +1,16 @@
 package com.example.testcircleview2;
 
+import java.security.spec.MGF1ParameterSpec;
 import java.util.LinkedList;
 
 import android.content.Context;
 import android.graphics.Point;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -23,8 +27,18 @@ import android.widget.TextView;
  * @author Administrator
  *
  */
-public class CircleView2 extends FrameLayout implements View.OnTouchListener {
+public class CircleView2 extends FrameLayout implements View.OnTouchListener, GestureDetector.OnGestureListener {
 	///*
+
+	/*
+	private class CircleGestureDetector extends GestureDetector {
+
+		public CircleGestureDetector(Context context, OnGestureListener listener) {
+			super(context, listener);
+			// TODO Auto-generated constructor stub
+		}
+
+	}*/
 
 	private class TouchAsyncTask extends AsyncTask<Integer, Integer, Integer> {
 
@@ -105,22 +119,39 @@ public class CircleView2 extends FrameLayout implements View.OnTouchListener {
 		
 	}//*/
 	
+	
+	
+	
 	private View[] mSubViews;
 	private int mSubViewNum;
 	private static LinkedList<ApplicationInfo> mApplications;
 	private LayoutInflater mInflater;
 	
-	private TouchAsyncTask mTouchTask;
+	//private TouchAsyncTask mTouchTask;
+	private Handler mCircleHandler;
+	private GestureDetector mCircleGestureDetector;
+	private static final int CIRCLE_HANDLER_MSG_ANI = 01;
+	
 	private boolean isMotionMoving;
 	private boolean isMovingDown;
 	private int mMotionMovingCounter;
 	private float mLastMotionY;
+	private long mDelaydMillis;   //default start 10ms
+	private long mElapseMillis;   //default start 10ms
+	//private long mOnScrollLastX;
+	//private long mOnScrollLastY;
+	//private long mLastDownEventTime;
+	
+	private static final int DEFAULT_DELAY_MILLIS = 5;
+	private static final int DEFAULT_DELAY_MILLIS_ADDITION = 3;
+	private static final int DEFAULT_DELAY_MILLIS_END_TIME = 1500;
 	
 	private static final int MAX_SUB_VIEWS = 20;
 	private static final int MAX_APP_NUMS = 9;
 	
 	private static final String MOTION_EVENT_TAG = "motionEvent";
 	private static final String MOTION_TASK_TAG = "motionTask";
+	private static final String TEST_DIFF_ON_TOUCH_EVENT = "TEST_DIFF_ON_TOUCH_EVENT";
 	
 	private static int mTestCounter = 0;
 	
@@ -158,7 +189,8 @@ public class CircleView2 extends FrameLayout implements View.OnTouchListener {
 		// TODO Auto-generated constructor stub
 		mSubViews = new View[MAX_SUB_VIEWS];
 		mSubViewNum = 0;
-		
+		//mOnScrollLastX = 0;
+		//mOnScrollLastY = 0;
 		otherInitializeWork();
 		_testLayoutSubView(context);
 		 //*/
@@ -166,8 +198,60 @@ public class CircleView2 extends FrameLayout implements View.OnTouchListener {
 	
 	private void otherInitializeWork(){
 		mInflater = LayoutInflater.from(getContext());
-		setOnTouchListener(this);
-		this.mOriginalPoint = new Point(0, 150);
+		//setOnTouchListener(this);		//no need for another touchlistener
+		mOriginalPoint = new Point(0, 150);
+		mCircleGestureDetector = new GestureDetector(this);
+		/*
+		mCircleHandler = new Handler(new Handler.Callback() {
+			
+			@Override
+			public boolean handleMessage(Message msg) {
+				// TODO Auto-generated method stub
+				switch(msg.what){
+				case CIRCLE_HANDLER_MSG_ANI:
+					break;
+				}
+				return false;
+			}
+		});//*/
+		
+		mCircleHandler = new Handler(){
+			/* (non-Javadoc)
+			 * @see android.os.Handler#handleMessage(android.os.Message)
+			 */
+			@Override
+			public void handleMessage(Message msg) {
+				// TODO Auto-generated method stub
+				switch(msg.what){
+				case CIRCLE_HANDLER_MSG_ANI:
+					
+					if(!isMotionMoving)
+						break; //stop animate!!
+					
+					if(mElapseMillis > DEFAULT_DELAY_MILLIS_END_TIME){
+						mDelaydMillis = 0;
+						mElapseMillis = 0;
+						//isMotionMoving = false;
+					}else{
+						if(isMovingDown){
+							setmAngle(5);
+						}else{
+							setmAngle(-5);
+						}
+						requestLayout();
+						mElapseMillis += mDelaydMillis;
+						mCircleHandler.sendEmptyMessageDelayed(CIRCLE_HANDLER_MSG_ANI, mDelaydMillis);
+						mDelaydMillis += DEFAULT_DELAY_MILLIS_ADDITION;
+						
+					}
+					break;
+					
+				}
+				super.handleMessage(msg);
+			}};
+		
+		
+		
 	}
 	
  	private void _testLayoutSubView(Context context){
@@ -401,6 +485,8 @@ public class CircleView2 extends FrameLayout implements View.OnTouchListener {
 	     final int historySize = event.getHistorySize();
 	     final int pointerCount = event.getPointerCount();
 	    
+	     Log.d(TEST_DIFF_ON_TOUCH_EVENT, "This is View.setOnTouchLister().onTouch!");
+	     
 	     /*
 	     //use handler instead of AsyncTask
 	     //so... deleted
@@ -469,10 +555,118 @@ public class CircleView2 extends FrameLayout implements View.OnTouchListener {
         			 "( " + event.getX(p) + 
         			 " , " + event.getY(p) + " )" );
 	     }
-	     //*/
-		return false;
+	     */
+	     return false;
 	}
 	
+	
+
+	/* (non-Javadoc)
+	 * @see android.view.GestureDetector.OnGestureListener#onFling(android.view.MotionEvent, android.view.MotionEvent, float, float)
+	 */
+	@Override
+	public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
+			float velocityY) {
+		// TODO Auto-generated method stub
+		Log.d(TEST_DIFF_ON_TOUCH_EVENT, "onFling is called!");
+		
+		mDelaydMillis = DEFAULT_DELAY_MILLIS;
+		mElapseMillis = 0;
+		if(e2.getY() > e1.getY()){
+			isMovingDown = true;
+		}else{
+			isMovingDown = false;
+		}
+		if(e2.getEventTime() - e1.getEventTime() < 400){
+			mCircleHandler.sendEmptyMessageDelayed(CIRCLE_HANDLER_MSG_ANI, DEFAULT_DELAY_MILLIS);
+			isMotionMoving = true;
+		}
+		//Log.d(TEST_DIFF_ON_TOUCH_EVENT, "e1.time:" + e1.getEventTime() + "e2.time:" + e2.getEventTime() );
+		//Log.d(TEST_DIFF_ON_TOUCH_EVENT, "e1.time-e2.time:" + (e1.getEventTime() - e2.getEventTime() ));
+		
+		return true;
+	}
+
+	/* (non-Javadoc)
+	 * @see android.view.GestureDetector.OnGestureListener#onScroll(android.view.MotionEvent, android.view.MotionEvent, float, float)
+	 */
+	@Override
+	public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX,
+			float distanceY) {
+		// TODO Auto-generated method stub
+		//Log.d(TEST_DIFF_ON_TOUCH_EVENT, "onScroll is called!");
+		
+		//warning:
+		//float x = distanceX + distanceY;
+		//mOnScrollLastX +=distanceX;
+		//mOnScrollLastY +=distanceY;
+		
+		if(distanceY < 0){
+			setmAngle(5);
+		}else{
+			setmAngle(-5);
+		}
+		requestLayout();
+		
+		//Log.d(TEST_DIFF_ON_TOUCH_EVENT, "onScroll distanceX:" + distanceX + "distanceY:" + distanceY );
+		
+		return false;
+	}
+
+	/* (non-Javadoc)
+	 * @see android.view.GestureDetector.OnGestureListener#onSingleTapUp(android.view.MotionEvent)
+	 */
+	@Override
+	public boolean onSingleTapUp(MotionEvent e) {
+		// TODO Auto-generated method stub
+		isMotionMoving = false;
+		return false;
+	}
+
+	/* (non-Javadoc)
+	 * @see android.view.GestureDetector.OnGestureListener#onDown(android.view.MotionEvent)
+	 */
+	@Override
+	public boolean onDown(MotionEvent e) {
+		// TODO Auto-generated method stub
+		isMotionMoving = false;
+		//mLastDownEventTime = e.getEventTime();
+		return false;
+	}
+
+	/* (non-Javadoc)
+	 * @see android.view.GestureDetector.OnGestureListener#onLongPress(android.view.MotionEvent)
+	 */
+	@Override
+	public void onLongPress(MotionEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see android.view.GestureDetector.OnGestureListener#onShowPress(android.view.MotionEvent)
+	 */
+	@Override
+	public void onShowPress(MotionEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/* (non-Javadoc)
+	 * @see android.view.View#onTouchEvent(android.view.MotionEvent)
+	 */
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+		// TODO Auto-generated method stub
+		
+		//Log.d(TEST_DIFF_ON_TOUCH_EVENT, "This is CircleView.onTouchEvent !");
+		// this is the View's default onTouchEvent
+		if(mCircleGestureDetector.onTouchEvent(event)){
+			return true;
+		}else{
+			return super.onTouchEvent(event);
+		}
+	}
 	
 	
 	
